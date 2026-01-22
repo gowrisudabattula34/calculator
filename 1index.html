@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Online Quiz Exam</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    margin:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.quiz-container{
+    width:900px;
+    background:white;
+    border-radius:15px;
+    display:flex;
+    box-shadow:0 15px 30px rgba(0,0,0,.3);
+    overflow:hidden;
+}
+
+.quiz-main{
+    flex:3;
+    padding:25px;
+}
+
+.quiz-side{
+    flex:1;
+    background:#f4f6ff;
+    padding:15px;
+    border-left:2px solid #ddd;
+}
+
+h2{
+    margin:0;
+}
+
+.timer{
+    float:right;
+    background: white;
+    color: black;
+    padding:5px 12px;
+    border-radius:8px;
+    font-weight:bold;
+}
+
+.question{
+    margin-top:20px;
+    font-size:18px;
+}
+
+#reviewBadge{
+    background:orange;
+    color:white;
+    font-size:12px;
+    padding:4px 8px;
+    border-radius:6px;
+    margin-left:10px;
+}
+
+.options label{
+    display:block;
+    background:#eef1ff;
+    margin:8px 0;
+    padding:12px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.options label:hover{
+    background:#dce1ff;
+}
+
+.buttons{
+    margin-top:15px;
+}
+
+button{
+    background:#667eea;
+    color:white;
+    border:none;
+    padding:8px 15px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-right:5px;
+}
+
+button:hover{
+    background:#5667d8;
+}
+
+.progress{
+    height:8px;
+    background:#ddd;
+    border-radius:10px;
+    margin-top:10px;
+    overflow:hidden;
+}
+
+#progressBar{
+    height:8px;
+    width:0%;
+    background:#667eea;
+}
+
+.palette button{
+    width:35px;
+    height:35px;
+    border-radius:50%;
+    border:none;
+    margin:5px;
+    cursor:pointer;
+}
+
+.answered{background:#4caf50;color:white;}
+.review{background:orange;color:white;}
+.current{border:2px solid black;}
+
+.status{
+    font-size:14px;
+    margin-top:10px;
+}
+.result-message{
+    font-size:20px;
+    color:green;
+    margin-top:20px;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body oncontextmenu="return false">
+
+<div class="quiz-container" id="quizContainer">
+
+<div class="quiz-main">
+<h2>Online Quiz Exam
+<span class="timer" id="timer">10:00</span>
+</h2>
+
+<div class="progress">
+<div id="progressBar"></div>
+</div>
+
+<div class="question">
+<span id="questionText"></span>
+<span id="reviewBadge" style="display:none;">Marked for Review</span>
+</div>
+
+<div class="options" id="options"></div>
+
+<div class="buttons">
+<button onclick="prev()">Previous</button>
+<button onclick="markReview()">Mark for Review</button>
+<button onclick="next()">Next</button>
+<button onclick="submitQuiz()">Submit</button>
+<button onclick="fullscreen()">Full Screen</button>
+</div>
+
+<h3 id="result"></h3>
+<div class="result-message" id="message"></div>
+</div>
+
+<div class="quiz-side">
+<h4>Question Palette</h4>
+<div class="palette" id="palette"></div>
+
+<div class="status">
+<p>Answered: <span id="answeredCount">0</span></p>
+<p>Review: <span id="reviewCount">0</span></p>
+<p>Not Visited: <span id="notVisited">0</span></p>
+</div>
+</div>
+
+</div>
+
+<script>
+// ================== QUIZ DATA ==================
+const quiz = [
+{q:"1. Which keyword defines a function?",o:["fun","def","function","define"],a:1},
+{q:"2. Which datatype is immutable?",o:["List","Set","Tuple","Dict"],a:2},
+{q:"3. Which symbol is comment?",o:["//","#","--","/*"],a:1},
+{q:"4. Output of 3**2?",o:["6","9","8","5"],a:1},
+{q:"5. Which is loop?",o:["if","for","def","print"],a:1},
+{q:"6. Correct file extension for Python?",o:[".pt",".py",".pyt",".python"],a:1},
+{q:"7. Which keyword is used for condition?",o:["check","when","if","cond"],a:2},
+{q:"8. Which function reads input?",o:["input()","read()","scan()","get()"],a:0},
+{q:"9. What does len() return?",o:["length","value","count","size"],a:0},
+{q:"10. Which data structure allows duplicates?",o:["Set","Tuple","Dict","List"],a:3},
+{q:"11. Which keyword stops loop?",o:["stop","end","break","exit"],a:2},
+{q:"12. What is output: print(10%3)?",o:["1","3","0","10"],a:0},
+{q:"13. Keyword for class?",o:["class","object","struct","define"],a:0},
+{q:"14. What is boolean result of 5==5?",o:["True","False","0","1"],a:0},
+{q:"15. Converts string to integer?",o:["int()","str()","float()","input()"],a:0},
+{q:"16. Exception handling keyword?",o:["try","catch","error","handle"],a:0},
+{q:"17. Floor division operator?",o:["/","%","//","**"],a:2},
+{q:"18. Python list method to add item?",o:["append()","add()","insert()","push()"],a:0},
+{q:"19. Which collection is unordered?",o:["List","Set","Dict","Tuple"],a:1},
+{q:"20. Type of 10?",o:["int","integer","number","<class 'int'>"],a:3}
+];
+
+// ================== VARIABLES ==================
+let i=0;
+let score=0;
+let ans=JSON.parse(localStorage.getItem("ans"))||[];
+let rev=JSON.parse(localStorage.getItem("rev"))||[];
+let timerInterval;
+
+// ================== ELEMENTS ==================
+const qText=document.getElementById("questionText");
+const opt=document.getElementById("options");
+const badge=document.getElementById("reviewBadge");
+const palette=document.getElementById("palette");
+const resultEl=document.getElementById("result");
+const messageEl=document.getElementById("message");
+
+// ================== LOAD QUESTION ==================
+function load(){
+    const q=quiz[i];
+    qText.innerText=`${q.q}`;
+    opt.innerHTML="";
+    q.o.forEach((x,j)=>{
+        opt.innerHTML+=`<label>
+        <input type="radio" name="op" value="${j}" ${ans[i]==j?"checked":""} onclick="save(${j})"> ${x}
+        </label>`;
+    });
+    badge.style.display=rev[i]?"inline-block":"none";
+    updatePalette();
+    updateProgress();
+}
+
+// ================== SAVE ANSWER ==================
+function save(v){
+    ans[i]=v;
+    localStorage.setItem("ans",JSON.stringify(ans));
+    updatePalette();
+}
+
+// ================== NAVIGATION ==================
+function next(){if(i<quiz.length-1)i++; load();}
+function prev(){if(i>0)i--; load();}
+function markReview(){rev[i]=true; localStorage.setItem("rev",JSON.stringify(rev)); load();}
+function go(x){i=x; load();}
+
+// ================== PALETTE ==================
+function updatePalette(){
+    palette.innerHTML="";
+    quiz.forEach((_,x)=>{
+        let cls="";
+        if(ans[x]!=undefined) cls="answered";
+        if(rev[x]) cls="review";
+        if(x==i) cls+=" current";
+        palette.innerHTML+=`<button class="${cls}" onclick="go(${x})">${x+1}</button>`;
+    });
+    document.getElementById("answeredCount").innerText=ans.filter(x=>x!=undefined).length;
+    document.getElementById("reviewCount").innerText=rev.filter(x=>x).length;
+    document.getElementById("notVisited").innerText=quiz.length - ans.filter(x=>x!=undefined).length;
+}
+
+// ================== PROGRESS BAR ==================
+function updateProgress(){
+    document.getElementById("progressBar").style.width=((i+1)/quiz.length)*100+"%";
+}
+
+// ================== SUBMIT QUIZ ==================
+function submitQuiz(){
+    clearInterval(timerInterval); // Stop timer
+    score=0;
+    quiz.forEach((q,x)=>{
+        if(ans[x]==q.a) score++;
+    });
+    resultEl.innerHTML=`🎯 Score: ${score}/${quiz.length}`;
+    messageEl.innerHTML="✅ Exam Completed Successfully!";
+    // Disable all inputs and buttons
+    document.querySelectorAll("input[name='op']").forEach(el=>el.disabled=true);
+    document.querySelectorAll(".buttons button").forEach(btn=>btn.disabled=true);
+    localStorage.clear();
+}
+
+// ================== FULL SCREEN ==================
+function fullscreen(){
+    document.documentElement.requestFullscreen();
+}
+
+// ================== TIMER ==================
+let time=600; // 10 minutes
+function startTimer(){
+    clearInterval(timerInterval);
+    timerInterval=setInterval(()=>{
+        let m=Math.floor(time/60);
+        let s=time%60;
+        document.getElementById("timer").innerText=`${m}:${s<10?"0":""}${s}`;
+        if(time==0) submitQuiz();
+        time--;
+    },1000);
+}
+
+// ================== SECURITY ==================
+window.onbeforeunload=()=>"Exam in progress!";
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+startTimer();
+load();
+</script>
+
+</body>
+</html>
